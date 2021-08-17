@@ -1,0 +1,63 @@
+---
+- hosts: all
+  vars:
+    docker_network: jenkins-network
+  
+  tasks:
+  - name: Create bridge nework for 2 containers
+    docker_network:
+      name: jenkins-network
+    tags: create-network
+  
+  - name: Create DIND container for Jenkins
+    docker_container:
+      name: Jenkins-DIND
+      image: docker:dind-rootless
+#      networks_cli_compatible: yes
+#      network_mode: host
+      user: 1000:1000
+      container_default_behavior: no_defaults
+      privileged: yes
+      volumes:
+        - /home/santosh/workspace/devops/workplace/jenkins:/var/jenkins_home
+      ports:
+        - 2376:2376
+      networks:
+        - name: "jenkins-network"
+          aliases:
+            - docker
+#      storage_opts: name: overlay2
+    tags: create-jenkins-dind
+
+  - name: Create Jenkins-Server container
+    docker_container:
+      name: Jenkins-Server
+      image: jenkins/jenkins:2.289.3-lts-jdk11
+      user: 1000:1000
+      volumes:
+        - /home/santosh/workspace/devops/workplace/jenkins:/var/jenkins_home
+      ports:
+        - 8080:8080
+        - 50000:50000
+      networks:
+        - name: "jenkins-network"
+    tags: create-jenkins-server
+
+  - name:  Copy systemd service script to start and stop jenkins
+    copy:
+      src: /home/santosh/workspace/devops/workplace/ansible/misc/jenkins.service
+      dest: /etc/systemd/system
+    tags: systemd
+    become: true
+
+  - name: Reload systemctl
+    shell:
+      cmd: systemctl restart jenkins.service
+    tags: systemd
+    become: true
+
+  - name: Reload systemctl
+    shell:
+      cmd: systemctl enable jenkins.service
+    tags: systemd
+    become: true

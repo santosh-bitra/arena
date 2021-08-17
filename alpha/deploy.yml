@@ -1,0 +1,127 @@
+---
+- hosts: all
+  vars:
+    docker_network: bridge  
+#    host_network: host
+
+  tasks:
+#  - name: Create Prometheus User
+#    user:
+#      name: prometheus
+#      shell: /bin/false
+#      system: true
+#    tags: user
+
+  - name: Create Prometheus Directory
+    file:
+      path: "{{ item }}"
+      state: directory
+      mode: '0775'
+      owner: santosh
+      group: santosh
+    with_items:
+      - /etc/prometheus/conf
+      - /etc/prometheus/conf/rrules
+      - /etc/prometheus/conf/alerts
+    tags: directory
+    become: true
+
+
+# The Source location 'src' of this file has to be added
+# as per where you place the file in your environment
+  - name: Place prometheus server config. files
+    copy:
+      src: /home/santosh/workspace/devops/workplace/ansible/prom-core/configs/prometheus.yml
+      dest: /etc/prometheus/prometheus.yml
+      mode: '0775'
+      owner: santosh
+      group: santosh
+    tags: file
+    become: true
+
+  - name: Place alerts config. file
+    copy:
+      src: /home/santosh/workspace/devops/workplace/ansible/prom-core/configs/alert_rules.yml
+      dest: /etc/prometheus/conf/alerts/
+      mode: '0775'
+      owner: santosh
+    tags: file
+
+  - name: Create Data Directory for Prometheus
+    file:
+      path: /var/lib/prometheus
+      state: directory
+      mode: '0775'
+      owner: santosh
+      group: santosh
+    become: true
+    tags: directory
+
+  - name: Recursive change of permission of this directory
+    file:
+      path: /var/lib/prometheus
+      state: directory
+      recurse: yes
+      owner: santosh
+      group: santosh
+    become: true
+
+  - name: Start Prometheus container
+    docker_container:
+      name: prometheus-core
+      image: prom/prometheus
+      user: 1000
+      ports:
+#        - "9090:9090"
+      network_mode: host 
+#      log_options:
+#         max-size: "100m"
+      volumes:
+        - /etc/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+        - /var/lib/prometheus:/data/prometheus
+#        - /data/prometheus:/prom/prometheus
+#      hostname: "prom-core"
+      command: [ "--config.file=/etc/prometheus/prometheus.yml",
+                 "--storage.tsdb.retention=30d",
+                 "--storage.tsdb.path=/data/prometheus"]
+
+  - name: Start Node-Exporter Container
+    docker_container:
+      name: node-exporter
+      image: prom/node-exporter
+      user: 1000:1000
+#      ports:
+#        - 9100:9100
+      volumes:
+        - /:/hostfs
+      network_mode: host #could be changed to bridge but 'host' wont let port bindings to container
+#      networks: #temperory
+#        - name: "{{ docker_network }}" #temperory
+#      hostname: "node-exporter"
+      command: ["--path.rootfs=/hostfs"]
+    tags: node
+
+#  - name: Start Alert Manager
+#    docker_container:
+#      name: alert-manager
+#      image: bitnami/alertmanager:latest
+#      user: 1000:1000
+#      volumes:
+#        - /etc/alertmanager/alertmanager.yml:/opt/bitnami/alertmanager/conf/config.yml
+#        - /data/prometheus:/data
+#      network_mode: host
+#      command: ["--config.file=/etc/alertmanager/alertmanager.yml",
+#                "--storage.path=/data/alertmanager"]
+
+
+#  - name: Start Alert Manager COntainer
+#    docker_container:
+#    name: alert-manager
+#    image:
+
+
+#  - name: Create Prometheus User
+#    docker_container:
+#      name: prometheus-core2
+#      image: prom/prometheus
+#      state: started
