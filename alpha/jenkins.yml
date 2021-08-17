@@ -9,6 +9,7 @@
       name: jenkins-network
     tags: create-network
   
+
   - name: Create DIND container for Jenkins
     docker_container:
       name: Jenkins-DIND
@@ -29,6 +30,7 @@
 #      storage_opts: name: overlay2
     tags: create-jenkins-dind
 
+
   - name: Create Jenkins-Server container
     docker_container:
       name: Jenkins-Server
@@ -43,21 +45,44 @@
         - name: "jenkins-network"
     tags: create-jenkins-server
 
+
+  - name: Build Jenkins-Slave image
+    docker_image:
+      name: jenkins-slave-image
+      build:
+        path: /home/santosh/workspace/devops/workplace/jenkins_slave
+        args:
+          listen_port: 22
+      source: build
+    tags: build-slave-image
+
+
+  - name: Create Jenkins-Slave container
+    docker_container:
+      name: Jenkins-Slave
+      image: jenkins-slave-image
+      networks:
+        - name: "jenkins-network"
+    tags: create-jenkins-slave, build-slave-image
+
+
   - name:  Copy systemd service script to start and stop jenkins
     copy:
       src: /home/santosh/workspace/devops/workplace/ansible/misc/jenkins.service
       dest: /etc/systemd/system
-    tags: systemd
+    tags: systemd, create-jenkins-server
     become: true
+
 
   - name: Reload systemctl
     shell:
       cmd: systemctl restart jenkins.service
-    tags: systemd
+    tags: systemd, create-jenkins-server
     become: true
+
 
   - name: Reload systemctl
     shell:
       cmd: systemctl enable jenkins.service
-    tags: systemd
+    tags: systemd, create-jenkins-server
     become: true
