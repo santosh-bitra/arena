@@ -1,0 +1,12 @@
+[Unit]
+Description=Jenkins in a Docker container
+Requires=docker.service
+After=docker.service
+
+[Service]
+Restart=always
+ExecStart=/usr/bin/docker start -a Jenkins-Server
+ExecStop=/usr/bin/docker stop -t 2 Jenkins-Server
+
+[Install]
+WantedBy=default.target
