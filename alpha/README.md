@@ -9,4 +9,5 @@
 # 2. Jenkins.yml
 - Docker DIND
 - Jenkins Server
+- Jenkins Slave Image and Container
 - Systemd script for Jenkins Server
